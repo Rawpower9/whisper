@@ -2,3 +2,4 @@ rumps
 pynput
 pywhispercpp
 numpy
+ollama
