@@ -1,4 +1,0 @@
-rumps
-pynput
-pywhispercpp
-numpy
