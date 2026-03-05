@@ -1,13 +1,14 @@
 [project]
 name = "whisper"
 version = "0.1.0"
-description = "Add your description here"
+description = "macOS menu bar app: hold Right Option to record, transcribe with Whisper, and type the result"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.4.2",
     "ollama>=0.6.1",
     "pynput>=1.8.1",
-    "pywhispercpp>=1.4.1",
+    "resemblyzer>=0.1.3",
     "rumps>=0.4.0",
+    "mlx-whisper>=0.4.3",
 ]
