@@ -11,11 +11,11 @@ from pynput import keyboard
 
 from .config import (
     SAMPLERATE, CHANNELS, REALTIME, STREAM_STEP_MS, MODELS,
-    CHUNK_SAMPLES, LLM_ENABLED, SPEAKER_SIM_THRESHOLD,
+    CHUNK_SAMPLES, SPEAKER_SIM_THRESHOLD,
     VOICE_PROFILE_PATH, ENROLL_MIN_SECONDS,
 )
 from .audio import prepare_audio, speaker_similarity, enroll_voice
-from .transcription import transcribe, llm_refine
+from .transcription import transcribe
 from .overlay import TranscriptionOverlay
 
 log = logging.getLogger(__name__)
@@ -259,8 +259,6 @@ class WhisperTypeApp(rumps.App):
                 text = transcribe(audio, self._model_repo)
             log.debug("Whisper raw: %r", text)
 
-            if LLM_ENABLED and text:
-                text = llm_refine(text)
             log.debug("Final text: %r", text)
 
             with self._lock:

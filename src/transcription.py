@@ -1,18 +1,15 @@
-"""Whisper transcription and optional LLM refinement."""
+"""Whisper transcription."""
 
 import logging
 import re
 
 import mlx_whisper
 import numpy as np
-import ollama
 
 from .config import (
     NO_SPEECH_THRESHOLD,
     LOG_PROB_THRESHOLD,
     WHISPER_PROMPT,
-    LLM_MODEL,
-    LLM_SYSTEM_PROMPT,
 )
 
 log = logging.getLogger(__name__)
@@ -41,23 +38,3 @@ def transcribe(audio: np.ndarray, model_repo: str, *, partial: bool = False) -> 
     text = result["text"].strip()
     text = re.sub(r"\[.*?\]|\(.*?\)", "", text).strip()
     return text
-
-
-def llm_refine(text: str) -> str:
-    """Pass raw whisper text through a local LLM for cleanup."""
-    try:
-        response = ollama.chat(
-            model=LLM_MODEL,
-            messages=[
-                {"role": "system", "content": LLM_SYSTEM_PROMPT},
-                {"role": "user", "content": text},
-            ],
-            think=False,
-        )
-        refined = response["message"]["content"].strip()
-        refined = re.sub(r"<think>.*?</think>", "", refined, flags=re.DOTALL).strip()
-        log.debug("LLM: %r -> %r", text, refined)
-        return refined if refined else text
-    except Exception:
-        log.exception("LLM refinement failed; using raw whisper text")
-        return text

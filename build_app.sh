@@ -4,7 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 APP_NAME="WhisperType"
-ICON_FILE="icon.icns"
 
 echo "=== Building $APP_NAME.app ==="
 
@@ -14,77 +13,58 @@ if ! command -v uv &>/dev/null; then
     exit 1
 fi
 
-# Install dependencies including py2app
-uv pip install py2app --quiet 2>/dev/null || pip install py2app
+# Sync project deps and install PyInstaller
+uv sync --quiet
+uv pip install --python .venv/bin/python3 pyinstaller --quiet
 
-# Build icon if iconutil is available and no .icns exists
-if [ ! -f "$ICON_FILE" ]; then
-    echo "No icon.icns found — app will use default Python icon."
-    ICON_OPT=""
-else
-    ICON_OPT="'icon': '$ICON_FILE',"
-fi
-
-# Create a minimal setup.py for py2app
-cat > setup_app.py << 'SETUP_EOF'
-import os
-from setuptools import setup
-
-APP = ['whisper_type.py']
-DATA_FILES = []
-
-OPTIONS = {
-    'argv_emulation': False,
-    'plist': {
-        'CFBundleName': 'WhisperType',
-        'CFBundleDisplayName': 'WhisperType',
-        'CFBundleIdentifier': 'com.whispertype.app',
-        'CFBundleVersion': '0.1.0',
-        'CFBundleShortVersionString': '0.1.0',
-        'LSBackgroundOnly': False,
-        'LSUIElement': True,  # Menu bar app — no Dock icon
-        'NSMicrophoneUsageDescription': 'WhisperType needs microphone access to record and transcribe speech.',
-        'NSAppleEventsUsageDescription': 'WhisperType needs accessibility access to type transcribed text.',
-    },
-    'packages': [
-        'src',
-        'rumps',
-        'pynput',
-        'numpy',
-        'ollama',
-        'resemblyzer',
-        'mlx_whisper',
-        'huggingface_hub',
-    ],
-    'includes': [],
-    'frameworks': [],
-    'resources': [],
-}
-
-# Add icon if it exists
-if os.path.exists('icon.icns'):
-    OPTIONS['iconfile'] = 'icon.icns'
-
-setup(
-    app=APP,
-    data_files=DATA_FILES,
-    options={'py2app': OPTIONS},
-    setup_requires=['py2app'],
-)
-SETUP_EOF
+# Remove the obsolete 'typing' backport that conflicts with PyInstaller
+# (pulled in by resemblyzer but not actually needed on Python 3.12+)
+uv pip uninstall --python .venv/bin/python3 typing 2>/dev/null || true
 
 # Clean previous builds
-rm -rf build dist
+rm -rf build dist "${APP_NAME}.spec"
 
-echo "Running py2app..."
-python setup_app.py py2app 2>&1 | tail -5
+# Build the .app bundle
+echo "Running PyInstaller..."
+.venv/bin/python3 -m PyInstaller \
+    --name "$APP_NAME" \
+    --windowed \
+    --noconfirm \
+    --osx-bundle-identifier com.whispertype.app \
+    ${ICON_FILE:+"--icon" "$ICON_FILE"} \
+    --hidden-import=rumps \
+    --hidden-import=pynput.keyboard._darwin \
+    --hidden-import=AppKit \
+    --hidden-import=PyObjCTools.AppHelper \
+    --hidden-import=mlx.core \
+    --hidden-import=mlx_whisper \
+    --hidden-import=huggingface_hub \
+    --hidden-import=resemblyzer \
+    --collect-all mlx \
+    --collect-all mlx_whisper \
+    --collect-all resemblyzer \
+    --collect-all rumps \
+    --collect-submodules pynput \
+    whisper_type.py
+
+# Patch Info.plist to add required permission descriptions and LSUIElement
+PLIST="dist/$APP_NAME.app/Contents/Info.plist"
+if [ -f "$PLIST" ]; then
+    # LSUIElement: menu bar app, no Dock icon
+    /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$PLIST" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$PLIST"
+
+    # Permission descriptions shown in macOS prompts
+    /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'WhisperType needs microphone access to record and transcribe speech.'" "$PLIST" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 'WhisperType needs accessibility access to type transcribed text.'" "$PLIST" 2>/dev/null || true
+fi
 
 if [ -d "dist/$APP_NAME.app" ]; then
     echo ""
     echo "=== Build successful! ==="
     echo "App location: $(pwd)/dist/$APP_NAME.app"
     echo ""
-    echo "To install, run:"
+    echo "To install:"
     echo "  cp -r dist/$APP_NAME.app /Applications/"
     echo ""
     echo "To run now:"
@@ -99,6 +79,3 @@ else
     echo "Build failed. Check output above for errors."
     exit 1
 fi
-
-# Clean up generated setup file
-rm -f setup_app.py

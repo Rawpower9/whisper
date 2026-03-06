@@ -1,6 +1,5 @@
 rumps
 pynput
 numpy
-ollama
 resemblyzer
 mlx-whisper

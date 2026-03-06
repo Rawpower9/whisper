@@ -28,18 +28,6 @@ LOG_PROB_THRESHOLD = -2.0
 PRE_EMPHASIS = 0.97
 WHISPER_PROMPT = "Voice dictation. Clear speech in English."
 
-# LLM post-processing
-LLM_ENABLED = False
-LLM_MODEL = "qwen3:4b"
-LLM_SYSTEM_PROMPT = (
-    "You are a transcription editor. Clean up the raw speech-to-text output below:\n"
-    "- Fix grammar, punctuation, and capitalization\n"
-    "- Remove filler words (um, uh, like, you know, so, right)\n"
-    "- Fix obvious transcription errors using context\n"
-    "- Keep the original meaning and intent intact\n"
-    "Output ONLY the cleaned text. No explanation, no quotes, nothing else."
-)
-
 # Speaker verification
 VOICE_PROFILE_PATH = os.path.expanduser("~/.whisper/voice_profile.npy")
 SPEAKER_SIM_THRESHOLD = 0.75
